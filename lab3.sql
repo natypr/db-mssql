@@ -2,17 +2,19 @@ USE AdventureWorks2012;
 GO
 
 
--- Задание 1.
+-- Р—Р°РґР°РЅРёРµ 1.
 
 
--- 1) Добавьте в таблицу dbo.Person поле EmailAddress типа nvarchar размерностью 50 символов.
+-- 1) Р”РѕР±Р°РІСЊС‚Рµ РІ С‚Р°Р±Р»РёС†Сѓ dbo.Person РїРѕР»Рµ EmailAddress С‚РёРїР° nvarchar СЂР°Р·РјРµСЂРЅРѕСЃС‚СЊСЋ 50 СЃРёРјРІРѕР»РѕРІ.
+
 ALTER TABLE dbo.Person 
 	ADD EmailAddress NVARCHAR(50)
 GO
 
 
--- 2) Объявите табличную переменную с такой же структурой как dbo.Person и заполните ее данными из dbo.Person. 
---    Поле EmailAddress заполните данными из Person.EmailAddress.
+-- 2) РћР±СЉСЏРІРёС‚Рµ С‚Р°Р±Р»РёС‡РЅСѓСЋ РїРµСЂРµРјРµРЅРЅСѓСЋ СЃ С‚Р°РєРѕР№ Р¶Рµ СЃС‚СЂСѓРєС‚СѓСЂРѕР№ РєР°Рє dbo.Person Рё Р·Р°РїРѕР»РЅРёС‚Рµ РµРµ РґР°РЅРЅС‹РјРё РёР· dbo.Person. 
+--    РџРѕР»Рµ EmailAddress Р·Р°РїРѕР»РЅРёС‚Рµ РґР°РЅРЅС‹РјРё РёР· Person.EmailAddress.
+
 DECLARE @PersonTable TABLE (
 	BusinessEntityID int NOT NULL,
 	PersonType nchar(2) NOT NULL,
@@ -56,7 +58,8 @@ INNER JOIN Person.EmailAddress
 	ON Person.BusinessEntityID = EmailAddress.BusinessEntityID;
 
 
--- 3) Обновите поле EmailAddress в dbo.Person данными из табличной переменной, убрав из адреса все встречающиеся нули.
+-- 3) РћР±РЅРѕРІРёС‚Рµ РїРѕР»Рµ EmailAddress РІ dbo.Person РґР°РЅРЅС‹РјРё РёР· С‚Р°Р±Р»РёС‡РЅРѕР№ РїРµСЂРµРјРµРЅРЅРѕР№, СѓР±СЂР°РІ РёР· Р°РґСЂРµСЃР° РІСЃРµ РІСЃС‚СЂРµС‡Р°СЋС‰РёРµСЃСЏ РЅСѓР»Рё.
+
 UPDATE dbo.Person
 	SET EmailAddress = REPLACE(pt.EmailAddress, '0', '')
 FROM dbo.Person AS p
@@ -65,7 +68,8 @@ INNER JOIN @PersonTable AS pt
 GO
 
 
--- 4) Удалите данные из dbo.Person, для которых тип контакта в таблице PhoneNumberType равен 'Work'.
+-- 4) РЈРґР°Р»РёС‚Рµ РґР°РЅРЅС‹Рµ РёР· dbo.Person, РґР»СЏ РєРѕС‚РѕСЂС‹С… С‚РёРї РєРѕРЅС‚Р°РєС‚Р° РІ С‚Р°Р±Р»РёС†Рµ PhoneNumberType СЂР°РІРµРЅ 'Work'.
+
 DELETE dbo.Person
 FROM Person.Person
 INNER JOIN Person.PersonPhone
@@ -76,15 +80,15 @@ WHERE PhoneNumberType.Name = 'Work'
 GO
 
 
--- 5) Удалите поле EmailAddress из таблицы, удалите все созданные ограничения и значения по умолчанию.
+-- 5) РЈРґР°Р»РёС‚Рµ РїРѕР»Рµ EmailAddress РёР· С‚Р°Р±Р»РёС†С‹, СѓРґР°Р»РёС‚Рµ РІСЃРµ СЃРѕР·РґР°РЅРЅС‹Рµ РѕРіСЂР°РЅРёС‡РµРЅРёСЏ Рё Р·РЅР°С‡РµРЅРёСЏ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ.
 
---Ограничения
+--РћРіСЂР°РЅРёС‡РµРЅРёСЏ
 SELECT CONSTRAINT_NAME
 FROM AdventureWorks2012.INFORMATION_SCHEMA.CONSTRAINT_TABLE_USAGE
 WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'Person';
 GO
 
--- Значения по умолчанию
+-- Р—РЅР°С‡РµРЅРёСЏ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 SELECT name FROM sys.default_constraints
 WHERE parent_object_id = object_id('dbo.Person');
 GO
@@ -95,18 +99,20 @@ DROP COLUMN EmailAddress,
 GO
 
 
--- 6) Удалите таблицу dbo.Person.
+-- 6) РЈРґР°Р»РёС‚Рµ С‚Р°Р±Р»РёС†Сѓ dbo.Person.
 DROP TABLE dbo.Person;
 GO
 
 
 
--- Задание 2.
+
+-- Р—Р°РґР°РЅРёРµ 2.
 
 
--- 1) Выполните код, созданный во втором задании второй лабораторной работы. 
---	  Добавьте в таблицу dbo.Person поля TotalGroupSales MONEY и SalesYTD MONEY. 
---    Также создайте в таблице вычисляемое поле RoundSales, округляющее значение в поле SalesYTD до целого числа.
+-- 1) Р’С‹РїРѕР»РЅРёС‚Рµ РєРѕРґ, СЃРѕР·РґР°РЅРЅС‹Р№ РІРѕ РІС‚РѕСЂРѕРј Р·Р°РґР°РЅРёРё РІС‚РѕСЂРѕР№ Р»Р°Р±РѕСЂР°С‚РѕСЂРЅРѕР№ СЂР°Р±РѕС‚С‹. 
+--	  Р”РѕР±Р°РІСЊС‚Рµ РІ С‚Р°Р±Р»РёС†Сѓ dbo.Person РїРѕР»СЏ TotalGroupSales MONEY Рё SalesYTD MONEY. 
+--    РўР°РєР¶Рµ СЃРѕР·РґР°Р№С‚Рµ РІ С‚Р°Р±Р»РёС†Рµ РІС‹С‡РёСЃР»СЏРµРјРѕРµ РїРѕР»Рµ RoundSales, РѕРєСЂСѓРіР»СЏСЋС‰РµРµ Р·РЅР°С‡РµРЅРёРµ РІ РїРѕР»Рµ SalesYTD РґРѕ С†РµР»РѕРіРѕ С‡РёСЃР»Р°.
+
 ALTER TABLE dbo.Person
 	ADD TotalGroupSales MONEY, 
 		SalesYTD MONEY,
@@ -114,8 +120,9 @@ ALTER TABLE dbo.Person
 GO
 
 
--- 2) Создайте временную таблицу #Person, с первичным ключом по полю BusinessEntityID. 
---    Временная таблица должна включать все поля таблицы dbo.Person за исключением поля RoundSales.
+-- 2) РЎРѕР·РґР°Р№С‚Рµ РІСЂРµРјРµРЅРЅСѓСЋ С‚Р°Р±Р»РёС†Сѓ #Person, СЃ РїРµСЂРІРёС‡РЅС‹Рј РєР»СЋС‡РѕРј РїРѕ РїРѕР»СЋ BusinessEntityID. 
+--    Р’СЂРµРјРµРЅРЅР°СЏ С‚Р°Р±Р»РёС†Р° РґРѕР»Р¶РЅР° РІРєР»СЋС‡Р°С‚СЊ РІСЃРµ РїРѕР»СЏ С‚Р°Р±Р»РёС†С‹ dbo.Person Р·Р° РёСЃРєР»СЋС‡РµРЅРёРµРј РїРѕР»СЏ RoundSales.
+
 CREATE TABLE #Person (
 	BusinessEntityID int NOT NULL PRIMARY KEY,
 	PersonType nchar(2) NOT NULL,
@@ -134,9 +141,12 @@ CREATE TABLE #Person (
 GO
 
 
--- 3) Заполните временную таблицу данными из dbo.Person. Поле SalesYTD заполните значениями из таблицы Sales.SalesTerritory. 
---    Посчитайте общую сумму продаж (SalesYTD) для каждой группы территорий (Group) в таблице Sales.SalesTerritory и 
---    заполните этими значениями поле TotalGroupSales. Подсчет суммы продаж осуществите в Common Table Expression (CTE). (wtf)
+-- 3) Р—Р°РїРѕР»РЅРёС‚Рµ РІСЂРµРјРµРЅРЅСѓСЋ С‚Р°Р±Р»РёС†Сѓ РґР°РЅРЅС‹РјРё РёР· dbo.Person. 
+--    РџРѕР»Рµ SalesYTD Р·Р°РїРѕР»РЅРёС‚Рµ Р·РЅР°С‡РµРЅРёСЏРјРё РёР· С‚Р°Р±Р»РёС†С‹ Sales.SalesTerritory. 
+--    РџРѕСЃС‡РёС‚Р°Р№С‚Рµ РѕР±С‰СѓСЋ СЃСѓРјРјСѓ РїСЂРѕРґР°Р¶ (SalesYTD) РґР»СЏ РєР°Р¶РґРѕР№ РіСЂСѓРїРїС‹ С‚РµСЂСЂРёС‚РѕСЂРёР№ (Group) РІ С‚Р°Р±Р»РёС†Рµ 
+--    Sales.SalesTerritory Рё Р·Р°РїРѕР»РЅРёС‚Рµ СЌС‚РёРјРё Р·РЅР°С‡РµРЅРёСЏРјРё РїРѕР»Рµ TotalGroupSales. 
+--    РџРѕРґСЃС‡РµС‚ СЃСѓРјРјС‹ РїСЂРѕРґР°Р¶ РѕСЃСѓС‰РµСЃС‚РІРёС‚Рµ РІ Common Table Expression (CTE). (wtf)
+
 SELECT [Group], SUM(SalesYTD) AS sum_SalesYTD_byGroup 
 FROM Sales.SalesTerritory
 GROUP BY [Group];
@@ -201,16 +211,19 @@ INNER JOIN SalesTerritory_CTE AS w
 GO
 
 
--- 4) Удалите из таблицы dbo.Person строки, где EmailPromotion = 2
+-- 4) РЈРґР°Р»РёС‚Рµ РёР· С‚Р°Р±Р»РёС†С‹ dbo.Person СЃС‚СЂРѕРєРё, РіРґРµ EmailPromotion = 2
+
 DELETE FROM dbo.Person
 WHERE EmailPromotion = 2;
 GO
 
 
--- 5) Напишите Merge выражение, использующее dbo.Person как target, а временную таблицу как source. 
---    Для связи target и source используйте BusinessEntityID. Обновите поля TotalGroupSales и SalesYTD, если запись присутствует 
---    в source и target. Если строка присутствует во временной таблице, но не существует в target, добавьте строку в dbo.Person. 
---    Если в dbo.Person присутствует такая строка, которой не существует во временной таблице, удалите строку из dbo.Person.
+-- 5) РќР°РїРёС€РёС‚Рµ Merge РІС‹СЂР°Р¶РµРЅРёРµ, РёСЃРїРѕР»СЊР·СѓСЋС‰РµРµ dbo.Person РєР°Рє target, Р° РІСЂРµРјРµРЅРЅСѓСЋ С‚Р°Р±Р»РёС†Сѓ РєР°Рє source. 
+--    Р”Р»СЏ СЃРІСЏР·Рё target Рё source РёСЃРїРѕР»СЊР·СѓР№С‚Рµ BusinessEntityID. 
+--    РћР±РЅРѕРІРёС‚Рµ РїРѕР»СЏ TotalGroupSales Рё SalesYTD, РµСЃР»Рё Р·Р°РїРёСЃСЊ РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ РІ source Рё target. 
+--    Р•СЃР»Рё СЃС‚СЂРѕРєР° РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ РІРѕ РІСЂРµРјРµРЅРЅРѕР№ С‚Р°Р±Р»РёС†Рµ, РЅРѕ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ target, РґРѕР±Р°РІСЊС‚Рµ СЃС‚СЂРѕРєСѓ РІ dbo.Person. 
+--    Р•СЃР»Рё РІ dbo.Person РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ С‚Р°РєР°СЏ СЃС‚СЂРѕРєР°, РєРѕС‚РѕСЂРѕР№ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІРѕ РІСЂРµРјРµРЅРЅРѕР№ С‚Р°Р±Р»РёС†Рµ, СѓРґР°Р»РёС‚Рµ СЃС‚СЂРѕРєСѓ РёР· dbo.Person.
+
 SET IDENTITY_INSERT dbo.Person ON;
 MERGE dbo.Person AS target 
 	USING #Person AS source
