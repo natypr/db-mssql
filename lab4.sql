@@ -172,51 +172,30 @@ SELECT TOP(3) * FROM Person.PersonPhone
 
 -- 1) Создайте представление VIEW, отображающее данные из таблиц Person.PhoneNumberType и Person.PersonPhone. 
 --	  Создайте уникальный кластерный индекс в представлении по полям PhoneNumberTypeID и BusinessEntityID.
-/* CREATE VIEW Person.VIEW_PhoneNumberType_PersonPhone
-WITH SCHEMABINDING
-AS
-SELECT pnt.PhoneNumberTypeID,
-	pp.BusinessEntityID,
-	pnt.Name AS Name_PhoneNumberType,
-	pp.PhoneNumber,
-	pp.ModifiedDate AS ModifiedDate_PersonPhone,
-	pnt.ModifiedDate AS ModifiedDate_PhoneNumberType
-FROM Person.PhoneNumberType AS pnt
-INNER JOIN Person.PersonPhone AS pp
-	ON pnt.PhoneNumberTypeID = pp.PhoneNumberTypeID;
-GO */
 
-CREATE VIEW Person.VIEW_PhoneNumberType_PersonPhone (
-	PhoneNumberTypeID,
-	Name_PNT,
-	ModifiedDate_PNT,
-	BusinessEntityID,
+CREATE VIEW Person.viewPersonPhone
+	WITH SCHEMABINDING
+AS
+SELECT BusinessEntityID,
+	pnt.PhoneNumberTypeID AS PhoneNumberTypeID,
 	PhoneNumber,
-	ModifiedDate_PP
-)
-WITH SCHEMABINDING
-AS
-SELECT pnt.PhoneNumberTypeID,
-	pnt.Name,
-	pnt.ModifiedDate,
-	pp.BusinessEntityID,
-	pp.PhoneNumber,
-	pp.ModifiedDate
-FROM Person.PhoneNumberType AS pnt
-INNER JOIN Person.PersonPhone AS pp
+	pnt.Name
+FROM Person.PersonPhone AS pp
+INNER JOIN Person.PhoneNumberType AS pnt
 	ON pnt.PhoneNumberTypeID = pp.PhoneNumberTypeID;
 GO
 
-SELECT * FROM Person.VIEW_PhoneNumberType_PersonPhone;
-
-CREATE UNIQUE CLUSTERED INDEX UCI_PhoneNumberTypeID_BusinessEntityID 
-	ON Person.VIEW_PhoneNumberType_PersonPhone (
-		PhoneNumberTypeID,
-		BusinessEntityID
-		);
+CREATE UNIQUE CLUSTERED INDEX idxIds ON Person.viewPersonPhone (
+	PhoneNumberTypeID,
+	BusinessEntityID
+	);
 GO
 
- DROP VIEW Person.VIEW_PhoneNumberType_PersonPhone;
+SELECT * FROM Person.viewPersonPhone;
+GO
+
+DROP VIEW Person.viewPersonPhone;
+GO
 
 -- SCHEMABINDING принудительная синхронизация для CLUSTERED INDEX (убедиться, что таблица под VIEW не изменяется)!
 
@@ -224,150 +203,75 @@ GO
 -- 2) Создайте один INSTEAD OF триггер для представления на три операции INSERT, UPDATE, DELETE. Триггер должен выполнять 
 --	  соответствующие операции в таблицах Person.PhoneNumberType и Person.PersonPhone для указанного BusinessEntityID.
 
-
--- ! нужны тесты INSERT сразу с несколькими записями в команде, с несколькими новыми и старыми значениями - все сразу в одной команде
--- ! если нужно DELETE из вью - опять же тест DELETE - чтобы удаление было с условием под которое подходят несколько записей
-
-
-CREATE TRIGGER Person.PhoneNumberType_PersonPhone_InsteadOfTrigger 
-	ON Person.VIEW_PhoneNumberType_PersonPhone
-INSTEAD OF INSERT, UPDATE, DELETE AS
+CREATE TRIGGER Person.onViewPersonPhone ON Person.viewPersonPhone
+INSTEAD OF 
+	INSERT,
+	UPDATE,
+	DELETE
+AS
 BEGIN
-	IF EXISTS (SELECT * FROM inserted)
+	-- не возвращает сообщение о количестве обработанных данных
+	SET NOCOUNT ON;
+	-- update
+	IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
 	BEGIN
-		IF EXISTS (
-			SELECT * FROM VIEW_PhoneNumberType_PersonPhone AS v 
-			JOIN inserted AS i
-				ON i.PhoneNumberTypeID = v.PhoneNumberTypeID
-		)
-		BEGIN
-			UPDATE Person.PhoneNumberType
-			SET Name = i.Name_PNT,
-				ModifiedDate = i.ModifiedDate_PNT
-			FROM inserted AS i
-			WHERE PhoneNumberType.PhoneNumberTypeID = i.PhoneNumberTypeID
+		UPDATE pp
+		SET pp.BusinessEntityID = i.BusinessEntityID,
+			pp.PhoneNumber = i.PhoneNumber,
+			pp.PhoneNumberTypeID = i.PhoneNumberTypeID
+		FROM Person.PersonPhone AS pp
+		INNER JOIN inserted AS i
+			ON i.BusinessEntityID = pp.BusinessEntityID;
 
-			UPDATE Person.PersonPhone
-			SET PhoneNumber = i.PhoneNumber,
-				ModifiedDate = i.ModifiedDate_PP
-			FROM inserted AS i
-			WHERE PersonPhone.BusinessEntityID = i.BusinessEntityID
-		END
-
-		ELSE
-		BEGIN
-			INSERT INTO Person.PhoneNumberType (
-				Name,
-				ModifiedDate
-				)
-			SELECT Name_PNT = i.Name_PNT,
-				ModifiedDate_PNT = i.ModifiedDate_PNT
-			FROM inserted AS i
-			
-			INSERT INTO Person.PersonPhone (
-				PhoneNumber,
-				ModifiedDate
-				)
-			SELECT PhoneNumber = i.PhoneNumber,
-				ModifiedDate_PP = i.ModifiedDate_PP
-			FROM inserted AS i
-		END
+		UPDATE pnt
+		SET pnt.Name = i.Name
+		FROM Person.PersonPhone AS pp
+		INNER JOIN inserted AS i
+			ON i.BusinessEntityID = pp.BusinessEntityID
+		INNER JOIN Person.PhoneNumberType AS pnt
+			ON pnt.PhoneNumberTypeID = pp.PhoneNumberTypeID;
 	END
-
-	IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+	-- insert
+	ELSE IF EXISTS (SELECT * FROM inserted)
+	BEGIN		
+		IF NOT EXISTS (
+				SELECT * FROM Person.PhoneNumberType
+				JOIN inserted ON inserted.[Name] = PhoneNumberType.[Name]
+				)
+		BEGIN
+			INSERT INTO Person.PhoneNumberType (Name)
+			SELECT Name
+			FROM inserted;
+		END
+		INSERT INTO Person.PersonPhone (
+			BusinessEntityID,
+			PhoneNumber,
+			PhoneNumberTypeID
+			)
+		SELECT i.BusinessEntityID,
+			i.PhoneNumber,
+			i.PhoneNumberTypeID
+		FROM inserted AS i;
+	END
+	--delete
+	ELSE IF EXISTS (SELECT * FROM deleted)
 	BEGIN
-		DELETE FROM Person.PhoneNumberType
-		WHERE PhoneNumberTypeID IN (SELECT PhoneNumberTypeID FROM deleted)
+		DELETE pp
+		FROM Person.PersonPhone AS pp
+		INNER JOIN deleted AS d
+			ON d.BusinessEntityID = pp.BusinessEntityID;
 
-		DELETE FROM Person.PersonPhone
-		WHERE BusinessEntityID IN (SELECT BusinessEntityID FROM deleted)
+		DELETE pnt
+		FROM Person.PhoneNumberType AS pnt
+		INNER JOIN Person.PersonPhone AS pp
+			ON pp.PhoneNumberTypeID = pnt.PhoneNumberTypeID
+		INNER JOIN deleted AS d
+			ON d.BusinessEntityID = pp.BusinessEntityID;
 	END
-END;
+END
 GO
 
-
-
-
-
-
--- insert
-CREATE TRIGGER Person.PhoneNumberType_PersonPhone_InsteadOfInsert
-	ON Person.VIEW_PhoneNumberType_PersonPhone
-INSTEAD OF INSERT
-AS
-BEGIN
-	SET IDENTITY_INSERT Person.PhoneNumberType ON
-	INSERT INTO Person.PhoneNumberType (
-		Name,
-		ModifiedDate
-		)
-	SELECT Name_PhoneNumberType,
-		ModifiedDate_PhoneNumberType
-	FROM inserted
-	SET IDENTITY_INSERT Person.PhoneNumberType OFF
-
-	SET IDENTITY_INSERT Person.PersonPhone ON
-	INSERT INTO Person.PersonPhone (
-		PhoneNumber,
-		ModifiedDate
-		)
-	SELECT PhoneNumber,
-		ModifiedDate_PersonPhone
-	FROM inserted
-	SET IDENTITY_INSERT Person.PersonPhone OFF
-END;
-GO
-
-DROP TRIGGER Person.PhoneNumberType_PersonPhone_InsteadOfInsert;
-GO
-
-
-
--- update
-CREATE TRIGGER Person.PhoneNumberType_PersonPhone_InsteadOfUpdate 
-	ON Person.VIEW_PhoneNumberType_PersonPhone
-INSTEAD OF UPDATE
-AS
-BEGIN
-	UPDATE Person.PhoneNumberType
-	SET Name = inserted.Name_PhoneNumberType,
-		ModifiedDate = inserted.ModifiedDate_PhoneNumberType
-	FROM inserted
-	WHERE  PhoneNumberType.PhoneNumberTypeID = inserted.PhoneNumberTypeID
-
-
-	UPDATE Person.PersonPhone
-	SET PhoneNumber = inserted.PhoneNumber,
-		PhoneNumberTypeID = inserted.PhoneNumberTypeID,
-		ModifiedDate = inserted.ModifiedDate_PersonPhone
-	FROM inserted
-	WHERE PersonPhone.BusinessEntityID = inserted.BusinessEntityID
-END;
-GO
-
-DROP TRIGGER Person.PhoneNumberType_PersonPhone_InsteadOfUpdate;
-GO
-
-
-
--- delete
-CREATE TRIGGER Person.PhoneNumberType_PersonPhone_InsteadOfDelete 
-	ON Person.VIEW_PhoneNumberType_PersonPhone
-INSTEAD OF DELETE
-AS
-BEGIN
-	DELETE pnt
-	FROM Person.PhoneNumberType pnt
-	INNER JOIN deleted
-		ON pnt.PhoneNumberTypeID = deleted.PhoneNumberTypeID
-
-	DELETE pp
-	FROM Person.PersonPhone pp
-	INNER JOIN deleted
-		ON pp.BusinessEntityID = deleted.BusinessEntityID;
-END;
-GO
-
+DROP TRIGGER Person.onViewPersonPhone;
 
 
 -- 3) Вставьте новую строку в представление, указав новые данные для PhoneNumberType и PersonPhone 
@@ -375,28 +279,33 @@ GO
 --	  Триггер должен добавить новые строки в таблицы Person.PhoneNumberType и Person.PersonPhone. 
 --	  Обновите вставленные строки через представление. Удалите строки.
 
-SELECT * FROM Person.VIEW_PhoneNumberType_PersonPhone
-WHERE Name_PNT = 'Name';
-
-INSERT INTO Person.VIEW_PhoneNumberType_PersonPhone (
-	PhoneNumberTypeID,
-	Name_PNT,
-	ModifiedDate_PNT,
+-- insert
+INSERT INTO Person.viewPersonPhone (
 	BusinessEntityID,
+	PhoneNumberTypeID,
 	PhoneNumber,
-	ModifiedDate_PP
-	)
-VALUES (998, 'Name', GETDATE(), 991, '111-111-1110', GETDATE()),
-	(999, 'Name-2', GETDATE(), 992, '111-111-1112', GETDATE());
+	Name
+) VALUES (1, 4, '111-111-2111', 'Test'),
+		(1, 3, '111-111-3111', 'Test-2'),
+		(2, 2, '222-222-1111', 'Test-3'),
+		(2, 1, '222-999-1111', 'Test-4');
+
+-- update
+UPDATE Person.viewPersonPhone 
+	SET PhoneNumber = '211-111-1114'
+	WHERE BusinessEntityID = 1;
 
 
-UPDATE Person.VIEW_PhoneNumberType_PersonPhone
-SET Name_PhoneNumberType = 'New-name'
-WHERE Name_PhoneNumberType = 'Name';
+-- delete
+DELETE FROM Person.viewPersonPhone WHERE BusinessEntityID = 1;
 
 
-DELETE Person.VIEW_PhoneNumberType_PersonPhone
-WHERE Name_PhoneNumberType = 'New-name';
+SELECT * FROM Person.PersonPhone
+	WHERE BusinessEntityID = 1;
+SELECT * FROM Person.PhoneNumberType 
+	WHERE PhoneNumberTypeID = 4;
+SELECT * FROM Person.viewPersonPhone
+	WHERE BusinessEntityID = 1;
 
-DELETE Person.VIEW_PhoneNumberType_PersonPhone
-WHERE Name_PhoneNumberType IN ('New-name', 'Name-2');
+INSERT INTO Person.PhoneNumberType (Name) VALUES ('Test');
+DELETE FROM Person.PhoneNumberType WHERE Name = 'Test';
